@@ -32,6 +32,7 @@ setup(
     'umap-learn>=0.3.10',
     'yale-dhlab-rasterfairy>=1.0.3',
     'yale-dhlab-keras-preprocessing>=1.1.1',
+    'ImageHash>=4.0',
   ],
   entry_points={
     'console_scripts': [

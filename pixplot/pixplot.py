@@ -31,6 +31,8 @@ import json
 import sys
 import csv
 import os
+import imagehash
+from PIL import Image as PILImage
 
 try:
   from urllib.parse import unquote # python 3
@@ -275,14 +277,16 @@ def get_positions(*args, **kwargs):
 def vectorize_images(**kwargs):
   '''Create and return vector representation of Image() instances'''
   print(' * preparing to vectorize {} images'.format(len(kwargs['image_paths'])))
-  base = InceptionV3(include_top=True, weights='imagenet',)
-  model = Model(inputs=base.input, outputs=base.get_layer('avg_pool').output)
+  #base = InceptionV3(include_top=True, weights='imagenet',)
+  #model = Model(inputs=base.input, outputs=base.get_layer('avg_pool').output)
   print(' * creating image array')
   vecs = []
   for idx, i in enumerate(stream_images(**kwargs)):
     print(' * vectorized {}/{} images'.format(idx+1, len(kwargs['image_paths'])))
-    im = preprocess_input( img_to_array( i.original.resize((299,299)) ) )
-    vecs.append( model.predict(np.expand_dims(im, 0)).squeeze() )
+    #im = preprocess_input( img_to_array( i.original.resize((299,299)) ) )
+    #vecs.append( model.predict(np.expand_dims(im, 0)).squeeze() )
+    ihash = imagehash.phash(PILImage.open(i.path))
+    vecs.append(np.array(ihash.hash).reshape(-1))
   return np.array(vecs)
 
 
