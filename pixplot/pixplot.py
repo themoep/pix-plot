@@ -263,30 +263,47 @@ def save_atlas(*args, **kwargs):
 
 def get_positions(*args, **kwargs):
   '''Get the image positions in each projection'''
-  vecs = vectorize_images(**kwargs)
-  umap = get_umap_projection(vecs=vecs, **kwargs)
-  rasterfairy = get_rasterfairy_projection(umap=umap, **kwargs)
+  vecs_imagenet = vectorize_images(**kwargs)
+  vecs_phash = phash_images(**kwargs)
+  umap_imagenet = get_umap_projection(vecs=vecs_imagenet, **kwargs)
+  umap_phash = get_umap_projection(vecs=vecs_phash, **kwargs)
+  rasterfairy_imagenet = get_rasterfairy_projection(umap=umap_imagenet, **kwargs)
+  rasterfairy_phash = get_rasterfairy_projection(umap=umap_phash, **kwargs)
   grid = get_grid_projection(**kwargs)
   return {
-    'umap': umap,
+    'umap_imagenet': umap_imagenet,
+    'umap_phash': umap_phash,
     'grid': grid,
-    'rasterfairy': rasterfairy,
+    'rasterfairy_imagenet': rasterfairy_imagenet,
+    'rasterfairy_phash': rasterfairy_phash,
   }
+
+
+def phash_images(**kwargs):
+  '''Create and return vector representation of Image() instances'''
+  print(' * preparing to pHash {} images'.format(len(kwargs['image_paths'])))
+  print(' * creating image array')
+  vecs = []
+  for idx, i in enumerate(stream_images(**kwargs)):
+    print(' * vectorized {}/{} images\r'.format(idx+1, len(kwargs['image_paths'])),end='')
+    ihash = imagehash.phash(PILImage.open(i.path))
+    vecs.append(np.array(ihash.hash).reshape(-1))
+  print('\n * Done! 😺')
+  return np.array(vecs)
 
 
 def vectorize_images(**kwargs):
   '''Create and return vector representation of Image() instances'''
   print(' * preparing to vectorize {} images'.format(len(kwargs['image_paths'])))
-  #base = InceptionV3(include_top=True, weights='imagenet',)
-  #model = Model(inputs=base.input, outputs=base.get_layer('avg_pool').output)
+  base = InceptionV3(include_top=True, weights='imagenet',)
+  model = Model(inputs=base.input, outputs=base.get_layer('avg_pool').output)
   print(' * creating image array')
   vecs = []
   for idx, i in enumerate(stream_images(**kwargs)):
-    print(' * vectorized {}/{} images'.format(idx+1, len(kwargs['image_paths'])))
-    #im = preprocess_input( img_to_array( i.original.resize((299,299)) ) )
-    #vecs.append( model.predict(np.expand_dims(im, 0)).squeeze() )
-    ihash = imagehash.phash(PILImage.open(i.path))
-    vecs.append(np.array(ihash.hash).reshape(-1))
+    print(' * vectorized {}/{} images\r'.format(idx+1, len(kwargs['image_paths'])),end='')
+    im = preprocess_input( img_to_array( i.original.resize((299,299)) ) )
+    vecs.append( model.predict(np.expand_dims(im, 0)).squeeze() )
+  print('\n * Done! 😺')
   return np.array(vecs)
 
 
@@ -294,7 +311,7 @@ def get_umap_projection(**kwargs):
   '''Get the x,y positions of images passed through a umap projection'''
   print(' * creating UMAP layout')
   out_dir = join(kwargs['out_dir'], 'layouts')
-  out_path = join(out_dir, 'umap-{}.json'.format(hash(**kwargs)))
+  out_path = join(out_dir, 'umap-{}.json'.format(hash(**kwargs))) # TODO change name based on type?
   if os.path.exists(out_path): return out_path
   model = UMAP(n_neighbors=25, min_dist=0.5, metric='correlation')
   z = model.fit_transform(kwargs['vecs'])
