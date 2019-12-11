@@ -44,7 +44,7 @@ config = {
   'images': None,
   'metadata': None,
   'out_dir': 'output',
-  'use_cache': False,
+  'use_cache': True,
   'use_gzip': False,
   'encoding': 'utf8',
   'n_clusters': 20,
@@ -124,7 +124,7 @@ def get_manifest(**kwargs):
   for label, position_path in get_positions(**kwargs).items():
     out_dir = join(kwargs['out_dir'], 'centroids')
     if not exists(out_dir): os.makedirs(out_dir)
-    centroid_path = join(out_dir, hash(**kwargs) + '.json')
+    centroid_path = join(out_dir, label + hash(**kwargs) + '.json')
     if not os.path.exists(centroid_path):
       vecs = json.load(open(position_path))
       centroids = get_centroids(vecs=vecs, **kwargs)
@@ -264,24 +264,39 @@ def save_atlas(*args, **kwargs):
 def get_positions(*args, **kwargs):
   '''Get the image positions in each projection'''
   vecs_imagenet = vectorize_images(**kwargs)
+  umap_imagenet = get_umap_projection(model="imagenet", vecs=vecs_imagenet, **kwargs)
+  rasterfairy_imagenet = get_rasterfairy_projection(model="imagenet", umap=umap_imagenet, **kwargs)
   vecs_phash = phash_images(**kwargs)
-  umap_imagenet = get_umap_projection(vecs=vecs_imagenet, **kwargs)
-  umap_phash = get_umap_projection(vecs=vecs_phash, **kwargs)
-  rasterfairy_imagenet = get_rasterfairy_projection(umap=umap_imagenet, **kwargs)
-  rasterfairy_phash = get_rasterfairy_projection(umap=umap_phash, **kwargs)
+  umap_phash = get_umap_projection(model="phash", vecs=vecs_phash, **kwargs)
+  rasterfairy_phash = get_rasterfairy_projection(model="pash", umap=umap_phash, **kwargs)
+  vecs_dhash = dhash_images(**kwargs)
+  umap_dhash = get_umap_projection(model="dhash", vecs=vecs_dhash, **kwargs)
+  rasterfairy_dhash = get_rasterfairy_projection(model="dhash", umap=umap_dhash, **kwargs)
+  vecs_whash = whash_images(**kwargs)
+  umap_whash = get_umap_projection(model="whash", vecs=vecs_whash, **kwargs)
+  rasterfairy_whash = get_rasterfairy_projection(model="whash", umap=umap_whash, **kwargs)
   grid = get_grid_projection(**kwargs)
   return {
     'umap_imagenet': umap_imagenet,
     'umap_phash': umap_phash,
+    'umap_dhash': umap_dhash,
+    'umap_whash': umap_whash,
     'grid': grid,
     'rasterfairy_imagenet': rasterfairy_imagenet,
     'rasterfairy_phash': rasterfairy_phash,
+    'rasterfairy_dhash': rasterfairy_dhash,
+    'rasterfairy_whash': rasterfairy_whash,
   }
 
 
 def phash_images(**kwargs):
   '''Create and return vector representation of Image() instances'''
   print(' * preparing to pHash {} images'.format(len(kwargs['image_paths'])))
+  cache_path = 'pHash-{}.npy'.format(hash(**kwargs))
+  if kwargs['use_cache'] and os.path.exists(cache_path):
+      print(' * found cache, using it.')
+      vecs = np.load(cache_path)
+      return vecs
   print(' * creating image array')
   vecs = []
   for idx, i in enumerate(stream_images(**kwargs)):
@@ -289,12 +304,59 @@ def phash_images(**kwargs):
     ihash = imagehash.phash(PILImage.open(i.path))
     vecs.append(np.array(ihash.hash).reshape(-1))
   print('\n * Done! 😺')
-  return np.array(vecs)
+  vecs = np.array(vecs)
+  np.save(cache_path, vecs)
+  return vecs
+
+
+def dhash_images(**kwargs):
+  '''Create and return vector representation of Image() instances'''
+  print(' * preparing to dHash {} images'.format(len(kwargs['image_paths'])))
+  cache_path = 'dHash-{}.npy'.format(hash(**kwargs))
+  if kwargs['use_cache'] and os.path.exists(cache_path):
+      print(' * found cache, using it.')
+      vecs = np.load(cache_path)
+      return vecs
+  print(' * creating image array')
+  vecs = []
+  for idx, i in enumerate(stream_images(**kwargs)):
+    print(' * vectorized {}/{} images\r'.format(idx+1, len(kwargs['image_paths'])),end='')
+    ihash = imagehash.dhash(PILImage.open(i.path))
+    vecs.append(np.array(ihash.hash).reshape(-1))
+  print('\n * Done! 😺')
+  vecs = np.array(vecs)
+  np.save(cache_path, vecs)
+  return vecs
+
+
+def whash_images(**kwargs):
+  '''Create and return vector representation of Image() instances'''
+  print(' * preparing to wHash {} images'.format(len(kwargs['image_paths'])))
+  cache_path = 'wHash-{}.npy'.format(hash(**kwargs))
+  if kwargs['use_cache'] and os.path.exists(cache_path):
+      print(' * found cache, using it.')
+      vecs = np.load(cache_path)
+      return vecs
+  print(' * creating image array')
+  vecs = []
+  for idx, i in enumerate(stream_images(**kwargs)):
+    print(' * vectorized {}/{} images\r'.format(idx+1, len(kwargs['image_paths'])),end='')
+    ihash = imagehash.whash(PILImage.open(i.path))
+    vecs.append(np.array(ihash.hash).reshape(-1))
+  print('\n * Done! 😺')
+  vecs = np.array(vecs)
+  np.save(cache_path, vecs)
+  return vecs
 
 
 def vectorize_images(**kwargs):
   '''Create and return vector representation of Image() instances'''
   print(' * preparing to vectorize {} images'.format(len(kwargs['image_paths'])))
+  cache_path = 'imagenet-{}.npy'.format(hash(**kwargs))
+  if kwargs['use_cache'] and os.path.exists(cache_path):
+    print(' * found cache, using it.')
+    vecs = np.load(cache_path)
+    return vecs
   base = InceptionV3(include_top=True, weights='imagenet',)
   model = Model(inputs=base.input, outputs=base.get_layer('avg_pool').output)
   print(' * creating image array')
@@ -304,27 +366,29 @@ def vectorize_images(**kwargs):
     im = preprocess_input( img_to_array( i.original.resize((299,299)) ) )
     vecs.append( model.predict(np.expand_dims(im, 0)).squeeze() )
   print('\n * Done! 😺')
-  return np.array(vecs)
+  vecs = np.array(vecs)
+  np.save(cache_path, vecs)
+  return vecs
 
 
-def get_umap_projection(**kwargs):
+def get_umap_projection(model=None, **kwargs):
   '''Get the x,y positions of images passed through a umap projection'''
   print(' * creating UMAP layout')
   out_dir = join(kwargs['out_dir'], 'layouts')
-  out_path = join(out_dir, 'umap-{}.json'.format(hash(**kwargs))) # TODO change name based on type?
-  if os.path.exists(out_path): return out_path
+  out_path = join(out_dir, 'umap-{}-{}.json'.format(model, hash(**kwargs))) # TODO change name based on type?
+  if kwargs['use_cache'] and os.path.exists(out_path): return out_path
   model = UMAP(n_neighbors=25, min_dist=0.5, metric='correlation')
   z = model.fit_transform(kwargs['vecs'])
   path = write_json(out_path, z, **kwargs)
   return path
 
 
-def get_rasterfairy_projection(**kwargs):
+def get_rasterfairy_projection(model=None, **kwargs):
   '''Get the x, y position of images passed through a rasterfairy projection'''
   print(' * creating rasterfairy layout')
   out_dir = join(kwargs['out_dir'], 'layouts')
-  out_path = join(out_dir, 'rasterfairy-{}.json'.format(hash(**kwargs)))
-  if os.path.exists(out_path): return out_path
+  out_path = join(out_dir, 'rasterfairy-{}-{}.json'.format(model, hash(**kwargs)))
+  if kwargs['use_cache'] and os.path.exists(out_path): return out_path
   umap = np.array(json.load(open(kwargs['umap'])))
   umap = (umap + 1) * 100 # make positive and upscale
   pos = rasterfairy.transformPointCloud2D(umap)[0]
@@ -385,7 +449,7 @@ def get_centroids(**kwargs):
 
 def hash(**kwargs):
   '''Hash `args` into a string and return that string. Overloads hash()'''
-  return str(uuid.uuid1())
+  #return str(uuid.uuid1())
   return sha224( u''.join([str(i) for i in kwargs]).encode('utf8')).hexdigest()
 
 
@@ -407,6 +471,7 @@ def parse():
   parser.add_argument('--n_clusters', type=int, default=config['n_clusters'], help='the number of clusters to identify', required=False)
   parser.add_argument('--out_dir', type=str, default=config['out_dir'], help='the directory to which outputs will be saved', required=False)
   config.update(vars(parser.parse_args()))
+  print(config)
   process_images(**config)
 
 
