@@ -1629,7 +1629,7 @@ Filter.prototype.filterCells = function(names) {
     // update the buffer attributes that describe this cell to the GPU
     var meshes = world.scene.children[0],
         attrs = meshes.children[cell.getIndexOfDrawCall()].geometry.attributes,
-        opacity = data.json.images[idx] in names ? 1 : 0.01;
+        opacity = data.json.images[idx] in names ? 1 : 0.1;
     attrs.opacity.array[cell.getIndexInDrawCall()] = opacity;
   }.bind(this))
   world.attrsNeedUpdate(['opacity']);
