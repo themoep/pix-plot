@@ -50,7 +50,7 @@ function Config() {
     dir: 'data',
     file: 'manifest.json',
     spread: 4000,
-    pointScalar: 12,
+    pointScalar: 22,
   }
   this.size = {
     cell: 32, // height of each cell in atlas
@@ -1583,7 +1583,7 @@ Filters.prototype.loadFilters = function() {
 }
 
 function Filter(obj) {
-  this.values = obj.filter_values || [];
+  this.values = obj.filter_values.sort() || [];
   this.name = obj.filter_name || '';
   if (this.values.length > 1) this.createSelect();
 }
@@ -1629,7 +1629,7 @@ Filter.prototype.filterCells = function(names) {
     // update the buffer attributes that describe this cell to the GPU
     var meshes = world.scene.children[0],
         attrs = meshes.children[cell.getIndexOfDrawCall()].geometry.attributes,
-        opacity = data.json.images[idx] in names ? 1 : 0.1;
+        opacity = data.json.images[idx] in names ? 1 : 0.01;
     attrs.opacity.array[cell.getIndexInDrawCall()] = opacity;
   }.bind(this))
   world.attrsNeedUpdate(['opacity']);

@@ -51,7 +51,7 @@ config = {
   'atlas_size': 2048,
   'lod_cell_height': 128,
   'atlas_cell_height': 32,
-  'square_cells': False,
+  'square_cells': True,
 }
 
 ##
@@ -186,6 +186,7 @@ def clean_filename(s):
 
 def write_metadata(**kwargs):
   if not kwargs.get('metadata', []): return
+  print(" * writing image metadata")
   out_dir = join(kwargs['out_dir'], 'metadata')
   for i in ['filters', 'options', 'file']:
     out_path = join(out_dir, i)
