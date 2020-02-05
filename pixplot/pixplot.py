@@ -133,8 +133,6 @@ def get_manifest(**kwargs):
       with open(centroid_path, 'w') as out: json.dump(centroids, out)
     rel_pos_path = position_path.replace(kwargs['out_dir'], '').lstrip('/')
     rel_cen_path = centroid_path.replace(kwargs['out_dir'], '').lstrip('/')
-    print("###.####{}".format(position_path))
-    print("###.####{}".format(rel_pos_path))
     manifest['layouts'][label] = {
       'positions': '/output/data/' + rel_pos_path,
       'centroids': '/output/data/' + rel_cen_path,
