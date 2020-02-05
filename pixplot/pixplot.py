@@ -264,6 +264,7 @@ def save_atlas(*args, **kwargs):
 
 def get_positions(*args, **kwargs):
   '''Get the image positions in each projection'''
+  export_image_idnames(**kwargs)
   vecs_imagenet = vectorize_images(**kwargs)
   umap_imagenet = get_umap_projection(model="imagenet", vecs=vecs_imagenet, **kwargs)
   rasterfairy_imagenet = get_rasterfairy_projection(model="imagenet", umap=umap_imagenet, **kwargs)
@@ -288,6 +289,19 @@ def get_positions(*args, **kwargs):
     'rasterfairy_dhash': rasterfairy_dhash,
     'rasterfairy_whash': rasterfairy_whash,
   }
+
+
+def export_image_idnames(**kwargs):
+  '''Save the idnames order to match the other exports later'''
+  print(' * exporting idnames')
+  cache_path = 'idnames-{}.npy'.format(hash(**kwargs))
+  if kwargs['use_cache'] and os.path.exists(cache_path):
+    print(' * found cache, skipping idname export')
+  idnames = []
+  for idx, i in enumerate(stream_images(**kwargs)):
+    idnames.append(basename(i.path).split('.')[0])
+  idnames = np.array(idnames)
+  np.save(cache_path, idnames)
 
 
 def phash_images(**kwargs):
