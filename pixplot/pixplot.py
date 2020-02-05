@@ -13,6 +13,7 @@ from sklearn.cluster import KMeans
 from keras.models import Model
 from hashlib import sha224
 import keras.backend as K
+from pathlib import Path
 from umap import UMAP
 import pkg_resources
 import rasterfairy
@@ -45,6 +46,7 @@ config = {
   'metadata': None,
   'out_dir': 'output',
   'use_cache': True,
+  'cache_dir': 'cache',
   'use_gzip': False,
   'encoding': 'utf8',
   'n_clusters': 20,
@@ -129,9 +131,13 @@ def get_manifest(**kwargs):
       vecs = json.load(open(position_path))
       centroids = get_centroids(vecs=vecs, **kwargs)
       with open(centroid_path, 'w') as out: json.dump(centroids, out)
+    rel_pos_path = position_path.replace(kwargs['out_dir'], '').lstrip('/')
+    rel_cen_path = centroid_path.replace(kwargs['out_dir'], '').lstrip('/')
+    print("###.####{}".format(position_path))
+    print("###.####{}".format(rel_pos_path))
     manifest['layouts'][label] = {
-      'positions': '/' + position_path,
-      'centroids': '/' + centroid_path,
+      'positions': '/output/data/' + rel_pos_path,
+      'centroids': '/output/data/' + rel_cen_path,
     }
   out_dir = join(kwargs['out_dir'], 'manifests')
   if not exists(out_dir): os.makedirs(out_dir)
@@ -294,7 +300,8 @@ def get_positions(*args, **kwargs):
 def export_image_idnames(**kwargs):
   '''Save the idnames order to match the other exports later'''
   print(' * exporting idnames')
-  cache_path = 'idnames-{}.npy'.format(hash(**kwargs))
+  Path(kwargs['cache_dir']).mkdir(parents=True, exist_ok=True) 
+  cache_path = join(kwargs['cache_dir'], 'idnames-{}.npy'.format(hash(**kwargs)))
   if kwargs['use_cache'] and os.path.exists(cache_path):
     print(' * found cache, skipping idname export')
   idnames = []
@@ -307,7 +314,7 @@ def export_image_idnames(**kwargs):
 def phash_images(**kwargs):
   '''Create and return vector representation of Image() instances'''
   print(' * preparing to pHash {} images'.format(len(kwargs['image_paths'])))
-  cache_path = 'pHash-{}.npy'.format(hash(**kwargs))
+  cache_path = join(kwargs['cache_dir'], 'pHash-{}.npy'.format(hash(**kwargs)))
   if kwargs['use_cache'] and os.path.exists(cache_path):
       print(' * found cache, using it.')
       vecs = np.load(cache_path)
@@ -327,7 +334,7 @@ def phash_images(**kwargs):
 def dhash_images(**kwargs):
   '''Create and return vector representation of Image() instances'''
   print(' * preparing to dHash {} images'.format(len(kwargs['image_paths'])))
-  cache_path = 'dHash-{}.npy'.format(hash(**kwargs))
+  cache_path = join(kwargs['cache_dir'], 'dHash-{}.npy'.format(hash(**kwargs)))
   if kwargs['use_cache'] and os.path.exists(cache_path):
       print(' * found cache, using it.')
       vecs = np.load(cache_path)
@@ -347,7 +354,7 @@ def dhash_images(**kwargs):
 def whash_images(**kwargs):
   '''Create and return vector representation of Image() instances'''
   print(' * preparing to wHash {} images'.format(len(kwargs['image_paths'])))
-  cache_path = 'wHash-{}.npy'.format(hash(**kwargs))
+  cache_path = join(kwargs['cache_dir'], 'wHash-{}.npy'.format(hash(**kwargs)))
   if kwargs['use_cache'] and os.path.exists(cache_path):
       print(' * found cache, using it.')
       vecs = np.load(cache_path)
@@ -367,7 +374,7 @@ def whash_images(**kwargs):
 def vectorize_images(**kwargs):
   '''Create and return vector representation of Image() instances'''
   print(' * preparing to vectorize {} images'.format(len(kwargs['image_paths'])))
-  cache_path = 'imagenet-{}.npy'.format(hash(**kwargs))
+  cache_path = join(kwargs['cache_dir'], 'imagenet-{}.npy'.format(hash(**kwargs)))
   if kwargs['use_cache'] and os.path.exists(cache_path):
     print(' * found cache, using it.')
     vecs = np.load(cache_path)
@@ -439,13 +446,13 @@ def add_z_dim(X, val=0.001):
 
 
 def write_json(path, obj, precision=4, sub_dir='layouts', **kwargs):
-  '''Write json object `o` to disk and return the path to that file'''
+  '''Write json object `o` to disk and return the path to that file relative to output dir'''
   obj = minmax_scale(obj)
   out_dir, filename = os.path.split(path)
   if not os.path.exists(out_dir): os.makedirs(out_dir)
   if precision: obj = [[round(float(j), precision) for j in i] for i in obj]
   with open(path, 'w') as out: json.dump(obj, out)
-  return path
+  return rel_path
 
 
 def get_centroids(**kwargs):
@@ -481,6 +488,7 @@ def parse():
   parser.add_argument('--images', type=str, default=config['images'], help='path to a glob of images to process', required=True)
   parser.add_argument('--metadata', type=str, default=config['metadata'], help='path to a csv or glob of JSON files with image metadata (see readme for format)', required=False)
   parser.add_argument('--use_cache', type=bool, default=config['use_cache'], help='given inputs identical to prior inputs, load outputs from cache', required=False)
+  parser.add_argument('--cache_dir', type=str, default=config['cache_dir'], help='path to the numpy cache files, if used', required=False)
   parser.add_argument('--use_gzip', type=bool, default=config['use_gzip'], help='save outputs with gzip compression', required=False)
   parser.add_argument('--encoding', type=str, default=config['encoding'], help='the encoding of input metadata', required=False)
   parser.add_argument('--n_clusters', type=int, default=config['n_clusters'], help='the number of clusters to identify', required=False)
