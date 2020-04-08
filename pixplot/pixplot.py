@@ -444,13 +444,13 @@ def add_z_dim(X, val=0.001):
 
 
 def write_json(path, obj, precision=4, sub_dir='layouts', **kwargs):
-  '''Write json object `o` to disk and return the path to that file relative to output dir'''
+  '''Write json object `o` to disk and return the path to that file'''
   obj = minmax_scale(obj)
   out_dir, filename = os.path.split(path)
   if not os.path.exists(out_dir): os.makedirs(out_dir)
   if precision: obj = [[round(float(j), precision) for j in i] for i in obj]
   with open(path, 'w') as out: json.dump(obj, out)
-  return rel_path
+  return path
 
 
 def get_centroids(**kwargs):
