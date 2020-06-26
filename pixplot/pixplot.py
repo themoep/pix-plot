@@ -273,13 +273,13 @@ def get_positions(*args, **kwargs):
   umap_imagenet = get_umap_projection(model="imagenet", vecs=vecs_imagenet, **kwargs)
   rasterfairy_imagenet = get_rasterfairy_projection(model="imagenet", umap=umap_imagenet, **kwargs)
   vecs_phash = phash_images(**kwargs)
-  umap_phash = get_umap_projection(model="phash", vecs=vecs_phash, **kwargs)
+  umap_phash = get_umap_projection(model="phash", metric='hamming', vecs=vecs_phash, **kwargs)
   rasterfairy_phash = get_rasterfairy_projection(model="pash", umap=umap_phash, **kwargs)
   vecs_dhash = dhash_images(**kwargs)
-  umap_dhash = get_umap_projection(model="dhash", vecs=vecs_dhash, **kwargs)
+  umap_dhash = get_umap_projection(model="dhash", metric='hamming', vecs=vecs_dhash, **kwargs)
   rasterfairy_dhash = get_rasterfairy_projection(model="dhash", umap=umap_dhash, **kwargs)
   vecs_whash = whash_images(**kwargs)
-  umap_whash = get_umap_projection(model="whash", vecs=vecs_whash, **kwargs)
+  umap_whash = get_umap_projection(model="whash", metric='hamming', vecs=vecs_whash, **kwargs)
   rasterfairy_whash = get_rasterfairy_projection(model="whash", umap=umap_whash, **kwargs)
   grid = get_grid_projection(**kwargs)
   return {
@@ -391,13 +391,13 @@ def vectorize_images(**kwargs):
   return vecs
 
 
-def get_umap_projection(model=None, **kwargs):
+def get_umap_projection(model=None, metric='correlation', **kwargs):
   '''Get the x,y positions of images passed through a umap projection'''
   print(' * creating UMAP layout')
   out_dir = join(kwargs['out_dir'], 'layouts')
   out_path = join(out_dir, 'umap-{}-{}.json'.format(model, hash(**kwargs))) # TODO change name based on type?
   if kwargs['use_cache'] and os.path.exists(out_path): return out_path
-  model = UMAP(n_neighbors=25, min_dist=0.5, metric='correlation')
+  model = UMAP(n_neighbors=25, min_dist=0.5, metric=metric)
   z = model.fit_transform(kwargs['vecs'])
   path = write_json(out_path, z, **kwargs)
   return path
