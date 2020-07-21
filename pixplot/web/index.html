@@ -148,11 +148,29 @@
       if (int(useColor) == 1) {
         gl_FragColor = vec4(vColor, 1.0);
       } else {
+        #define DRAWBORDER
+        
+        #ifdef DRAWBORDER
+        //shrink uvspace to lower right (gl_PointCoord is topleft-zeroed)
+        vec2 uv = vOffset + max(-0.1 + gl_PointCoord*1.1, 0.) * max(w, h);
+        #else
         vec2 uv = vOffset + gl_PointCoord * max(w, h);
+        #endif
+
         vec2 scaledUv = vTextureIndex > -0.5 ? uv/cellAtlasPxPerSide : uv/lodAtlasPxPerSide;
         int textureIndex = vTextureIndex > -0.5 ? int(vTextureIndex) : -1;
 
         TEXTURE_LOOKUP_TREE
+        
+        #ifdef DRAWBORDER
+        // border is drawn left and top
+        // #futurework resize based on distance?
+        if(gl_PointCoord.x < 0.1 || gl_PointCoord.y < 0.1) {
+            gl_FragColor.xyz = vec3(1., 0., 0.);
+        }
+        #endif
+
+
         gl_FragColor.a = vOpacity;
       }
     }
